@@ -4,11 +4,22 @@ from abc import ABC, abstractclassmethod, abstractproperty
 
 
 
+class ContaIterador:
+     def __init__(self):
+        pass
+     def __iter__(self):
+        pass
+     def __next__(self):     
+        pass
 class Cliente:
     def __init__(self,endereco):
         self.contas = []
         self.endereco = endereco
+        self.indice_conta = 0
     def realizar_transacao(self,conta,transacao):
+        if len(conta.historico.transacoes_dia()) >= 10:
+            print('você excedeu o numero de transações permitidas para hoje !!')
+            return
         transacao.registrar(conta)
     def adicionar_conta(self,conta):
         self.contas.append(conta)
@@ -100,8 +111,21 @@ class Historico:
      def transacoes(self):
           return self._transacoes
      def adicionar_transacao(self,transacao):
-          self._transacoes.append({'tipo':transacao.__class__.__name__,'valor':transacao.valor,'data':datetime.now().strftime("%d-%m-%Y %H:%M:%s"),})
-
+          self._transacoes.append({'tipo':transacao.__class__.__name__,'valor':transacao.valor,'data':datetime.now().strftime("%d-%m-%Y %H:%M:%S"),})
+     
+     def gerar_relatorio(self,tipo_trans=None):
+          for transa in self._transacoes:
+               if tipo_trans is None or transa['tipo'].lower() == tipo_trans.lower():
+                    yield transa 
+     
+     def transacoes_dia(self):
+          data_atual = datetime.utcnow().date()
+          transacoes = []
+          for transacao in self._transacoes:
+               data_transa = datetime.strptime(transacao['data'], "%d-%m-%Y %H:%M:%S").date()
+               if data_atual == data_transa:
+                    transacoes.append(transacao)
+          return transacoes
 
 class Transacao(ABC):
      @property
@@ -182,13 +206,14 @@ def exibir_extrato(clientes):
           return
     
     print(f'\n************* Extrato ********************')
-    transacoes = conta.historico.transacoes
     extrato = ''
-    if not transacoes:
+    tem_transacao = False
+    for transa in conta.historico.gerar_relatorio():
+         tem_transacao = True
+         extrato += f"\n{transa['data']}\n{transa['tipo']}:\n\tR$ {transa['valor']:.2f}"
+    if not tem_transacao:
          extrato = 'Não foram realizadas movimentações.'
-    else:
-         for transacao in transacoes:
-              extrato += f"\n{transacao['tipo']}:\n\tR$ {transacao['valor']:.2f}"
+    
     print(extrato)
     print(f"\nSaldo: R$ {conta.saldo:.2f}")
 
